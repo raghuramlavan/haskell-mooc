@@ -22,8 +22,6 @@
 -- The tests will check that you haven't added imports :)
 
 {-# LANGUAGE NoImplicitPrelude #-}
-{-# OPTIONS_GHC -Wno-overlapping-patterns #-}
-{-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 
 module Set3b where
 
@@ -41,12 +39,8 @@ import Mooc.Todo
 --   buildList 7 0 3 ==> [3]
 
 buildList :: Int -> Int -> Int -> [Int]
-buildList start count end = buildList' start count [end]
-    where
-        buildList' s c  xs
-         | c == 0 = xs
-         | c > 0  = buildList' s (c-1) (start : xs )
-
+buildList start 0 end = [end]
+buildList start count end = start : buildList start (count-1) end
 
 ------------------------------------------------------------------------------
 -- Ex 2: given i, build the list of sums [1, 1+2, 1+2+3, .., 1+2+..+i]
@@ -56,8 +50,10 @@ buildList start count end = buildList' start count [end]
 -- Ps. you'll probably need a recursive helper function
 
 sums :: Int -> [Int]
-sums i = [(k *(k+1)) `div`2 | k <-[1.. i]]
-
+sums i = go 0 1
+  where go sum j
+          | j>i = []
+          | otherwise = (sum+j) : go (sum+j) (j+1)
 
 ------------------------------------------------------------------------------
 -- Ex 3: define a function mylast that returns the last value of the
@@ -67,14 +63,12 @@ sums i = [(k *(k+1)) `div`2 | k <-[1.. i]]
 -- Use only pattern matching and recursion (and the list constructors : and [])
 --
 -- Examples:
---   mylast 0 [] ==> 0:q
+--   mylast 0 [] ==> 0
 --   mylast 0 [1,2,3] ==> 3
 
 mylast :: a -> [a] -> a
-mylast def [] = def
-mylast def [a] = a
-mylast def (x:xs) = mylast def xs
-
+mylast def []     = def
+mylast _   (x:xs) = mylast x xs
 
 ------------------------------------------------------------------------------
 -- Ex 4: safe list indexing. Define a function indexDefault so that
@@ -92,10 +86,9 @@ mylast def (x:xs) = mylast def xs
 --   indexDefault ["a","b","c"] (-1) "d" ==> "d"
 
 indexDefault :: [a] -> Int -> a -> a
-indexDefault [] i def = def
-indexDefault [x] i def = if i == 0 then x else def
+indexDefault [] _ def = def
 indexDefault (x:xs) 0 def = x
-indexDefault(x:xs) i def = if i<0 then def else indexDefault xs (i-1) def
+indexDefault (x:xs) i def = indexDefault xs (i-1) def
 
 ------------------------------------------------------------------------------
 -- Ex 5: define a function that checks if the given list is in
@@ -104,14 +97,11 @@ indexDefault(x:xs) i def = if i<0 then def else indexDefault xs (i-1) def
 -- Use pattern matching and recursion to iterate through the list.
 
 sorted :: [Int] -> Bool
-sorted [] = True
+sorted []  = True
 sorted [x] = True
-sorted (x:xs) = sorted' x xs
-    where
-        sorted' y1 (y2:ys) = (y1 <= y2) && sorted' y2 ys
-        sorted' y1 [y2]    =  y1 <= y2
-        sorted' y1 []      = True
-
+sorted (x:y:xs)
+  | x>y       = False
+  | otherwise = sorted (y:xs)
 
 ------------------------------------------------------------------------------
 -- Ex 6: compute the partial sums of the given list like this:
@@ -121,29 +111,11 @@ sorted (x:xs) = sorted' x xs
 --   sumsOf []       ==>  []
 --
 -- Use pattern matching and recursion (and the list constructors : and [])
-sums2 :: [Int] -> Int
-sums2 [y] = y
-sums2 [] = 0
-sums2 (y:ys) = y+ sums2 ys
-
 
 sumsOf :: [Int] -> [Int]
-sumsOf [] = []
-sumsOf [a] =[a]
-sumsOf x= sumOf' (rev [] x) []
-    where
-        sumOf' [] r = r
-        sumOf' [a] r = a : r
-        sumOf' (z:zs) r = sumOf' zs (sumAll (z : zs) : r)
-        sumAll :: [Int]-> Int
-        sumAll [] = 0
-        sumAll [y] = y
-        sumAll (y:ys) = y + sumAll ys
-        rev acc [] = acc
-        rev acc (x:xs) = rev (x:acc) xs
-
-
-
+sumsOf xs = go 0 xs
+  where go acc (x:xs) = (acc+x) : go (acc+x) xs
+        go _   [] = []
 
 ------------------------------------------------------------------------------
 -- Ex 7: implement the function merge that merges two sorted lists of
@@ -156,21 +128,11 @@ sumsOf x= sumOf' (rev [] x) []
 --   merge [1,1,6] [1,2]   ==> [1,1,1,2,6]
 
 merge :: [Int] -> [Int] -> [Int]
-merge xs ys = rev [] (merge' [] xs ys)
-    where
-        merge' acc (i:is) (j:js)
-            | i <= j = merge' (i : acc) is (j:js)
-            | i > j = merge' (j : acc) (i:is) js
-        merge' acc [i] [j]
-            | i <= j = merge' (i : acc) [] [j]
-            | i> j   = merge' (j:acc) [i] []
-        merge' acc [] (j:js) = merge' (j:acc) [] js
-        merge' acc [] [j]    = j:acc
-        merge' acc (i:is) []  = merge' (i:acc) is []
-        merge' acc [i] []     = merge' (i:acc) [] []
-        merge' acc [] []      = acc
-        rev acc [] = acc
-        rev acc (x:xs) = rev (x:acc) xs
+merge [] ys = ys
+merge xs [] = xs
+merge (x:xs) (y:ys)
+  | x < y     = x : merge xs (y:ys)
+  | otherwise = y : merge (x:xs) ys
 
 ------------------------------------------------------------------------------
 -- Ex 8: define the function mymaximum that takes a list and a
@@ -189,9 +151,11 @@ merge xs ys = rev [] (merge' [] xs ys)
 --     ==> [1,2]
 
 mymaximum :: (a -> a -> Bool) -> a -> [a] -> a
-mymaximum bigger initial (x:xs)=  if bigger  x initial   then mymaximum  bigger x xs else mymaximum  bigger initial xs
-mymaximum bigger initial [x]=  if bigger x initial   then x else initial
 mymaximum bigger initial [] = initial
+mymaximum bigger initial (x:xs)
+  | bigger x initial  = mymaximum bigger x xs
+  | otherwise         = mymaximum bigger initial xs
+
 ------------------------------------------------------------------------------
 -- Ex 9: define a version of map that takes a two-argument function
 -- and two lists. Example:
@@ -204,18 +168,8 @@ mymaximum bigger initial [] = initial
 -- Use recursion and pattern matching. Do not use any library functions.
 
 map2 :: (a -> b -> c) -> [a] -> [b] -> [c]
-map2 f as bs = rev' [] (map2' f as bs [])
-
-map2' f (a:as) (b:bs) acc = map2' f as bs (f a b:acc)
-map2' f (a:as) [b] acc =  f a b:acc
-map2' f [a] (b:bs) acc =  f a b:acc
-map2' f [a] [b] acc =  f a b:acc
-map2' f [] _ acc = acc
-map2' f _ [] acc = acc
-
-rev' :: [a] -> [a] -> [a]
-rev' acc [] = acc
-rev' acc (x:xs) = rev' (x:acc) xs
+map2 f (a:as) (b:bs) = f a b:map2 f as bs
+map2 f _      _      = []
 
 ------------------------------------------------------------------------------
 -- Ex 10: implement the function maybeMap, which works a bit like a
@@ -239,11 +193,6 @@ rev' acc (x:xs) = rev' (x:acc) xs
 --   ==> []
 
 maybeMap :: (a -> Maybe b) -> [a] -> [b]
-maybeMap f xs = rev' [] (maybeMap' f xs [])
-    where
-        maybeMap' f (x:xs) r = if check (f x) then maybeMap' f xs  (get (f x):r) else  maybeMap' f xs r
-        maybeMap' f [x] r    = if check (f x) then get (f x):r else  r
-        maybeMap' f [] r =  r
-        check (Just v) = True
-        check Nothing  = False
-        get (Just t) = t
+maybeMap f (x:xs) = case f x of Just y -> y:maybeMap f xs
+                                Nothing -> maybeMap f xs
+maybeMap f [] = []
