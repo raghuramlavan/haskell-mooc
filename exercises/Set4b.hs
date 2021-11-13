@@ -20,10 +20,10 @@ import Mooc.Todo
 --   countNothings [Just 1, Nothing, Just 3, Nothing]  ==>  2
 
 countNothings :: [Maybe a] -> Int
-countNothings xs = foldr countHelper 0 xs
+countNothings = foldr countHelper 0
 
 countHelper :: Num p => Maybe a -> p -> p
-countHelper (Just a) x = x 
+countHelper (Just a) x = x
 countHelper Nothing x = x +1
 
 ------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ maxHelper i j = if i >j then i else j
 
 
 sumAndLength :: [Double] -> (Double,Int)
-sumAndLength xs = foldr slHelper slStart xs
+sumAndLength = foldr slHelper slStart
 
 slStart = (0,0)
 slHelper i (a,b) = (a+i,b+1)
@@ -69,7 +69,7 @@ slHelper i (a,b) = (a+i,b+1)
 --   myConcat [[1,2,3],[4,5],[6]] ==> [1,2,3,4,5,6]
 
 myConcat :: [[a]] -> [a]
-myConcat xs = foldr concatHelper concatStart xs
+myConcat = foldr concatHelper concatStart
 
 concatStart = []
 concatHelper x y = x ++ y
@@ -84,10 +84,18 @@ concatHelper x y = x ++ y
 --   largest [1,3,2,3] ==> [3,3]
 
 largest :: [Int] -> [Int]
-largest xs = foldr largestHelper [] xs
+largest = foldr largestHelper []
 
-largestHelper inp xs = foldr (\ a ys -> if ) 
-
+largestHelper :: Ord a => a -> [a] -> [a]
+largestHelper x [] = [x]
+largestHelper x [y]
+  | x == y = x:[y]
+  | x > y = [x]
+  | otherwise = [y]
+largestHelper x (y:ys)
+  | x == y = x:y:ys
+  | x > y = [x]
+  | otherwise = y:ys
 
 ------------------------------------------------------------------------------
 -- Ex 6: get the first element of a list with a fold. Define
@@ -100,7 +108,7 @@ largestHelper inp xs = foldr (\ a ys -> if )
 --   myHead [1,2,3]  ==>  Just 1
 
 myHead :: [a] -> Maybe a
-myHead xs = foldr headHelper Nothing xs
+myHead = foldr headHelper Nothing
 
 headHelper x y = Just x
 
@@ -115,7 +123,7 @@ headHelper x y = Just x
 --   myLast [1,2,3] ==> Just 3
 
 myLast :: [a] -> Maybe a
-myLast xs = foldr lastHelper Nothing xs
+myLast = foldr lastHelper Nothing
 
 lastHelper x Nothing = Just x
 lastHelper x (Just y) = Just y
