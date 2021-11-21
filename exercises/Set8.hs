@@ -13,6 +13,9 @@ import Mooc.Todo
 -- We'll use the JuicyPixels library to generate images. The library
 -- exposes the Codec.Picture module that has everything we need.
 import Codec.Picture
+import GHC.Float (float2Double)
+import Data.Bool (Bool(False))
+import GHC.Base (Bool(True))
 
 -- Let's start by defining Colors and Pictures.
 
@@ -64,7 +67,7 @@ justADot = Picture f
 
 -- Here's a picture that's just a solid color
 solid :: Color -> Picture
-solid color = Picture (\coord -> color)
+solid color = Picture (const color)
 
 -- Here's a simple picture:
 examplePicture1 = Picture f
@@ -133,7 +136,10 @@ renderListExample = renderList justADot (9,11) (9,11)
 --      ["000000","000000","000000"]]
 
 dotAndLine :: Picture
-dotAndLine = todo
+dotAndLine = Picture f
+  where f (Coord x y) | x==3 && y ==4 = white    -- top corner is pink
+                      | y==8          = pink     -- surrounded by a white square
+                      | otherwise     = black         -- rest of the picture is black
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -166,10 +172,10 @@ dotAndLine = todo
 --          ["7f0000","7f0000","7f0000"]]
 
 blendColor :: Color -> Color -> Color
-blendColor = todo
+blendColor (Color x1 y1 z1) (Color x2 y2 z2) = Color ((x1+x2) `div` 2) ((y1+y2) `div` 2) ((z1+z2) `div` 2)
 
 combine :: (Color -> Color -> Color) -> Picture -> Picture -> Picture
-combine = todo
+combine f (Picture p1) (Picture p2) =  Picture (\x -> f (p1 x) (p2 x))
 
 ------------------------------------------------------------------------------
 
@@ -193,7 +199,7 @@ contains (Shape f) x y = f (Coord x y)
 
 dot :: Int -> Int -> Shape
 dot x y = Shape f
-  where f (Coord cx cy) = (x==cx) && (y==cy)
+  where f (Coord cx cy) = x==cx && y==cy
 
 -- Here's the definitions of a circle
 
@@ -230,8 +236,8 @@ exampleCircle = fill red (circle 80 100 200)
 --        ["000000","000000","000000","000000","000000","000000"]]
 
 rectangle :: Int -> Int -> Int -> Int -> Shape
-rectangle x0 y0 w h = todo
-------------------------------------------------------------------------------
+rectangle x0 y0 w h = Shape f
+  where f (Coord x1 y1) = x1 >= x0 && x1 < x0 + w && y1 >= y0 && y1 < y0 + h
 
 ------------------------------------------------------------------------------
 -- Ex 4: combining shapes.
@@ -246,10 +252,12 @@ rectangle x0 y0 w h = todo
 -- shape.
 
 union :: Shape -> Shape -> Shape
-union = todo
+union  (Shape f1) (Shape f2)= Shape f
+  where f (Coord x1 y1) = f1 (Coord x1 y1) || f2 (Coord x1 y1)
 
 cut :: Shape -> Shape -> Shape
-cut = todo
+cut  (Shape f1) (Shape f2)= Shape f
+  where f (Coord x1 y1) = f1 (Coord x1 y1) && not (f2 (Coord x1 y1))
 ------------------------------------------------------------------------------
 
 -- Here's a snowman, built using union from circles and rectangles.
@@ -258,10 +266,10 @@ cut = todo
 
 exampleSnowman :: Picture
 exampleSnowman = fill white snowman
-  where snowman = union (cut body mouth) hat
+  where snowman = cut body mouth `union` hat
         mouth = rectangle 180 180 40 5
-        body = union (circle 50 200 250) (circle 40 200 170)
-        hat = union (rectangle 170 130 60 5) (rectangle 180 100 40 30)
+        body = circle 50 200 250 `union` circle 40 200 170
+        hat = rectangle 170 130 60 5 `union` rectangle 180 100 40 30
 
 ------------------------------------------------------------------------------
 -- Ex 5: even though we can combine Shapes and convert them to Pictures, we
@@ -277,7 +285,8 @@ exampleSnowman = fill white snowman
 --        ["000000","000000","000000"]]
 
 paintSolid :: Color -> Shape -> Picture -> Picture
-paintSolid color shape base = todo
+paintSolid color (Shape s) (Picture b) = Picture f
+  where f (Coord x y) = if  s (Coord x y) then color else b (Coord x y)
 ------------------------------------------------------------------------------
 
 allWhite :: Picture
@@ -290,7 +299,7 @@ exampleColorful :: Picture
 exampleColorful = (paintSolid black hat . paintSolid red legs . paintSolid pink body) allWhite
   where legs = circle 50 200 250
         body = circle 40 200 170
-        hat = union (rectangle 170 130 60 5) (rectangle 180 100 40 30)
+        hat = rectangle 170 130 60 5 `union` rectangle 180 100 40 30
 
 -- How about painting with a pattern instead of a solid color? Here
 -- are the definitions of two patterns (Pictures).
@@ -322,7 +331,8 @@ stripes a b = Picture f
 --       ["000000","000000","000000","000000","000000"]]
 
 paint :: Picture -> Shape -> Picture -> Picture
-paint pat shape base = todo
+paint (Picture p1) (Shape s) (Picture b) = Picture f
+  where f (Coord x y) = if  s (Coord x y) then p1 (Coord x y) else b (Coord x y)
 ------------------------------------------------------------------------------
 
 -- Here's a patterned version of the snowman example. See it by running:
@@ -332,13 +342,13 @@ examplePatterns :: Picture
 examplePatterns = (paint (solid black) hat . paint (stripes red yellow) legs . paint (stipple pink black) body) allWhite
   where legs = circle 50 200 250
         body = circle 40 200 170
-        hat = union (rectangle 170 130 60 5) (rectangle 180 100 40 30)
+        hat = rectangle 170 130 60 5 `union` rectangle 180 100 40 30
 
 -- What if we want vertical stripes? What if we want wider stripes?
 -- Let's implement zooming and flipping images.
 
 flipCoordXY :: Coord -> Coord
-flipCoordXY (Coord x y) = (Coord y x)
+flipCoordXY (Coord x y) = Coord y x
 
 -- Flip a picture by switching x and y coordinates
 flipXY :: Picture -> Picture
@@ -385,19 +395,27 @@ xy = Picture f
 data Fill = Fill Color
 
 instance Transform Fill where
-  apply = todo
+  apply (Fill c) (Picture p) = Picture f
+    where 
+      f (Coord x y) = c
 
 data Zoom = Zoom Int
   deriving Show
 
 instance Transform Zoom where
-  apply = todo
+  apply (Zoom z) = zoom z
 
 data Flip = FlipX | FlipY | FlipXY
-  deriving Show
+  deriving (Show, Eq)
 
 instance Transform Flip where
-  apply = todo
+  apply f (Picture p)
+    | f == FlipX = Picture (p . fx)
+    | f == FlipY = Picture (p . fy)
+    | f == FlipXY = flipXY (Picture p)
+      where
+        fx (Coord x y) = Coord (-x) y
+        fy (Coord x y) = Coord x (-y)
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -412,8 +430,8 @@ instance Transform Flip where
 data Chain a b = Chain a b
   deriving Show
 
-instance Transform (Chain a b) where
-  apply = todo
+instance (Transform a, Transform b) => Transform (Chain a b) where
+  apply (Chain a b) p = apply a (apply b p)
 ------------------------------------------------------------------------------
 
 -- Now we can redefine largeVerticalStripes using the above Transforms.
@@ -446,12 +464,18 @@ checkered = flipBlend largeVerticalStripes2
 --        ["000000","333333","333333","333333","000000"],
 --        ["000000","000000","333333","000000","000000"],
 --        ["000000","000000","000000","000000","000000"]]
+--class Transform t where
+-- apply :: t -> Picture -> Picture
 
 data Blur = Blur
   deriving Show
 
 instance Transform Blur where
-  apply = todo
+  apply Blur (Picture p) = Picture f
+    where 
+      f (Coord x y) = blur (p (Coord x (y-1)))  (p (Coord x (y+1)))  (p (Coord (x+1) y)) (p (Coord (x-1) y)) (p (Coord x y))
+       where
+         blur (Color x1 x2 x3) (Color y1 y2 y3) (Color z1 z2 z3) (Color xx1 xx2 xx3) (Color xy1 xy2 xy3)  = Color ((x1+y1+z1+xx1+xy1) `div` 5) ((x2+y2+z2+xx2+xy2) `div` 5) ((x3+y3+z3+xx3+xy3) `div` 5)
 ------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------
@@ -469,7 +493,9 @@ data BlurMany = BlurMany Int
   deriving Show
 
 instance Transform BlurMany where
-  apply = todo
+  apply (BlurMany x) p 
+   | x == 0 = p
+   | otherwise = apply (BlurMany (x-1)) (apply Blur p)
 ------------------------------------------------------------------------------
 
 -- Here's a blurred version of our original snowman. See it by running

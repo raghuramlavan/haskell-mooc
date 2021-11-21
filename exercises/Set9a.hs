@@ -15,6 +15,7 @@ import Data.List
 import Data.Ord
 
 import Mooc.Todo
+import Distribution.Simple.Utils (xargs, cabalVersion)
 
 ------------------------------------------------------------------------------
 -- Ex 1: Implement a function workload that takes in the number of
@@ -26,7 +27,10 @@ import Mooc.Todo
 -- Otherwise return "Ok."
 
 workload :: Int -> Int -> String
-workload nExercises hoursPerExercise = todo
+workload nExercises hoursPerExercise
+  | nExercises * hoursPerExercise > 100 = "Holy moly!"
+  | nExercises * hoursPerExercise < 10 = "Piece of cake!"
+  | otherwise = "Ok."
 
 ------------------------------------------------------------------------------
 -- Ex 2: Implement the function echo that builds a string like this:
@@ -39,7 +43,10 @@ workload nExercises hoursPerExercise = todo
 -- Hint: use recursion
 
 echo :: String -> String
-echo = todo
+echo s = echo' s s
+  where
+    echo' x [] = x
+    echo' x y = echo' (x ++", " ++ tail y) (tail y)
 
 ------------------------------------------------------------------------------
 -- Ex 3: A country issues some banknotes. The banknotes have a serial
@@ -52,7 +59,11 @@ echo = todo
 -- are valid.
 
 countValid :: [String] -> Int
-countValid = todo
+countValid s = countValid' s 0
+  where
+    countValid' [] x = x
+    countValid' [s] x = if s!! 2 == s !! 4 || s !! 3 == s !! 5 then x+1 else x
+    countValid' (s:xs) x = if s!! 2 == s !! 4 || s !! 3 == s !! 5then countValid' xs (x+1) else countValid' xs x
 
 ------------------------------------------------------------------------------
 -- Ex 4: Find the first element that repeats two or more times _in a
@@ -64,7 +75,10 @@ countValid = todo
 --   repeated [1,2,1,2,3,3] ==> Just 3
 
 repeated :: Eq a => [a] -> Maybe a
-repeated = todo
+repeated a = if length a >= 2 then
+      if head a == head (tail a) then Just (head a) else repeated (tail a)
+      else Nothing
+
 
 ------------------------------------------------------------------------------
 -- Ex 5: A laboratory has been collecting measurements. Some of the
@@ -81,12 +95,22 @@ repeated = todo
 --   sumSuccess [Right 1, Left "it was a snake!", Right 3]
 --     ==> Right 4
 --   sumSuccess [Left "lab blew up", Left "I was sick"]
---     ==> Left "no data"
+--     ==> sumSuccess' (tail s) (x
 --   sumSuccess []
 --     ==> Left "no data"
 
 sumSuccess :: [Either String Int] -> Either String Int
-sumSuccess = todo
+sumSuccess s = sumSuccess' s 0 0
+   where
+     sumSuccess' s x found
+      | null s = if found == 0 then Left "no data" else Right x
+      | checke (head s) = sumSuccess' (tail s) (x + counts (head s)) 1
+      | otherwise = sumSuccess' (tail s) x found
+
+     checke (Right _) = True
+     checke _ = False
+     counts (Right y) = y
+
 
 ------------------------------------------------------------------------------
 -- Ex 6: A combination lock can either be open or closed. The lock
@@ -108,30 +132,33 @@ sumSuccess = todo
 --   isOpen (open "0000" (lock (changeCode "0000" (open "1234" aLock)))) ==> True
 --   isOpen (open "1234" (lock (changeCode "0000" (open "1234" aLock)))) ==> False
 
-data Lock = LockUndefined
+data Lock = L String | O String
   deriving Show
 
 -- aLock should be a locked lock with the code "1234"
 aLock :: Lock
-aLock = todo
+aLock = L "1234"
 
 -- isOpen returns True if the lock is open
 isOpen :: Lock -> Bool
-isOpen = todo
+isOpen (O _ ) = True
+isOpen _ = False
 
 -- open tries to open the lock with the given code. If the code is
 -- wrong, nothing happens.
 open :: String -> Lock -> Lock
-open = todo
+open s (L s1) = if s == s1 then O s1 else L s1
+open s (O s1) = O s1
 
 -- lock closes a lock. If the lock is already closed, nothing happens.
 lock :: Lock -> Lock
-lock = todo
-
+lock (O y) = L y
+lock (L y) = L y
 -- changeCode changes the code of an open lock. If the lock is closed,
 -- nothing happens.
 changeCode :: String -> Lock -> Lock
-changeCode = todo
+changeCode s (O _) = O s
+changeCode s (L x) = L x
 
 ------------------------------------------------------------------------------
 -- Ex 7: Here's a type Text that just wraps a String. Implement an Eq
