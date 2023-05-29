@@ -7,6 +7,7 @@
 -- You can also play around with your answers in GHCi with
 --
 --   stack ghci Set9a.hs
+{-# LANGUAGE InstanceSigs #-}
 
 module Set9a where
 
@@ -16,6 +17,7 @@ import Data.Ord
 
 import Mooc.Todo
 import Distribution.Simple.Utils (xargs, cabalVersion)
+import Data.Maybe
 
 ------------------------------------------------------------------------------
 -- Ex 1: Implement a function workload that takes in the number of
@@ -176,6 +178,9 @@ changeCode s (L x) = L x
 data Text = Text String
   deriving Show
 
+instance Eq Text where
+  (==) :: Text -> Text -> Bool
+  (==) (Text a) (Text b) = filter (not . isSpace) a == filter (not . isSpace) b
 
 ------------------------------------------------------------------------------
 -- Ex 8: We can represent functions or mappings as lists of pairs.
@@ -209,8 +214,12 @@ data Text = Text String
 --       ==> [("a",1),("b",2)]
 
 compose :: (Eq a, Eq b) => [(a,b)] -> [(b,c)] -> [(a,c)]
-compose = todo
 
+compose ((aa,bb):xs) y = if isNothing (lookup bb y)  then compose xs y else (aa,fromJust$lookup bb y  ) : compose xs y where
+  fromJust (Just xx) = xx
+  fromJust Nothing = error "this should not have happened"
+
+compose [] y = []
 ------------------------------------------------------------------------------
 -- Ex 9: Reorder a list using a list of indices.
 --
@@ -252,5 +261,7 @@ identity n = [0 .. n - 1]
 multiply :: Permutation -> Permutation -> Permutation
 multiply p q = map (\i -> p !! (q !! i)) (identity (length p))
 
-permute :: Permutation -> [a] -> [a]
-permute = todo
+permute :: Eq a => Permutation -> [a] -> [a]
+permute xs y = map (\x -> y !!fromJust (elemIndex x xs)) (identity (length y)) where
+    fromJust (Just xx) = xx
+    fromJust Nothing = error "this should not have happened"
